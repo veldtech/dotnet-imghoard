@@ -34,7 +34,22 @@
 This is where you explain some basic logic about your project.
 
 ```cs
-Console.WriteLine("Maybe add some example code");
+//Use Default Settings
+ImghoardClient client = new ImghoardClient();
+//Pass String Or Uri into constructor
+ImghoardClient client = new ImghoardClient("https://imghoard.example.com");
+
+//Get All Images Without Tags
+var images = await client.GetImagesAsync();
+//Get All Images Of Specfic Tag
+var images = await client.GetImagesAsync("animal");
+//Get All Images Of Specific Tag Excluding Tag
+var images = await client.GetImagesAsync("animal", "-cat");
+//Get A specific image by it's Id
+var image = await client.GetImageAsync(1169529585188999168);
+
+//Posts A new Image
+var imageurl = await client.PostImage(imageStream, "supercool", "image", "with", "amazing", "tags");
 ```
 
 and generally explaining how to get around it.
