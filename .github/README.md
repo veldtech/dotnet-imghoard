@@ -2,7 +2,7 @@
   <img src="https://cdn.miki.ai/nuget/miki-logo@0.5x.png"/>
 </p>
 <p align="center">
-    The project description and/or motivation.
+    Mikibot/imghoard API implementation in C#
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 
 <!-- Build status of MASTER only -->
 
-# Project Title
+# .Net Imghoard
 
 ## Project status
 
