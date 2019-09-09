@@ -34,28 +34,36 @@ namespace Imghoard
 
         public async Task<IReadOnlyList<Image>> GetImagesAsync(params string[] Tags)
         {
-            StringBuilder query = new StringBuilder();
-
-            foreach (string tag in Tags)
+            StringBuilder query = null;
+            if (Tags.Any())
             {
-                if (tag.StartsWith("-"))
+                query = new StringBuilder();
+                foreach (string tag in Tags)
                 {
-                    query.Append(tag);
-                    continue;
-                }
-                else
-                {
-                    if (tag != Tags.FirstOrDefault())
+                    if (tag.StartsWith("-"))
                     {
-                        query.Append($"+{tag}");
+                        query.Append(tag);
                         continue;
                     }
+                    else
+                    {
+                        if (tag != Tags.FirstOrDefault())
+                        {
+                            query.Append($"+{tag}");
+                            continue;
+                        }
 
-                    query.Append(tag);
+                        query.Append(tag);
+                    }
                 }
             }
 
-            var url = new Uri(API_Base, $"/images?tags={query}");
+            Uri url;
+
+            if (query != null)
+                url = new Uri(API_Base, $"/images?tags={query}");
+            else
+                url = new Uri(API_Base, $"/images");
 
             var response = await APIClient.GetAsync(url.ToString());
 
