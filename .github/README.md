@@ -8,7 +8,7 @@
 <p align="center">
   <!-- Nuget package -->
   <a href="https://www.nuget.org/packages/Miki.Utils.Imaging.Headers">
-      <img src="https://img.shields.io/nuget/dt/Miki.Discord.svg"/>
+      <img src="https://img.shields.io/nuget/dt/Miki.Utils.Imaging.Headers.svg"/>
   </a>
 
   <!-- Discord dev server -->
