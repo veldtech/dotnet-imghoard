@@ -7,7 +7,7 @@
 
 <p align="center">
   <!-- Nuget package -->
-  <a href="https://www.nuget.org/packages/{NUGET_PACKAGE}">
+  <a href="https://www.nuget.org/packages/Miki.Utils.Imaging.Headers">
       <img src="https://img.shields.io/nuget/dt/Miki.Discord.svg"/>
   </a>
 
@@ -22,17 +22,14 @@
 
 # .Net Imghoard
 
-## Project status
+## Build status
 
 |Environment | Platform | PlatformN|
 |---|---|---|
-|env_debug | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/{REPO_NAME}?branchName={BRANCH}"/> | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/{REPO_NAME}?branchName={BRANCH}"/>|
-| env_release | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/{REPO_NAME}?branchName={BRANCH}"/> | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/{REPO_NAME}?branchName={BRANCH}"/>|
+| env_release | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/dotnet-imghoard?branchName=master"/> | <img src="https://dev.azure.com/mikibot/Miki/_apis/build/status/dotnet-imghoard?branchName=master"/>|
 
 ## Getting started
-
-This is where you explain some basic logic about your project.
-
+Here's how to get started with .Net Imghoard
 ```cs
 //Use Default Settings
 ImghoardClient client = new ImghoardClient();
@@ -51,5 +48,3 @@ var image = await client.GetImageAsync(1169529585188999168);
 //Posts A new Image
 var imageurl = await client.PostImage(imageStream, "supercool", "image", "with", "amazing", "tags");
 ```
-
-and generally explaining how to get around it.
