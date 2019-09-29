@@ -1,35 +1,32 @@
-﻿using Imghoard.Models;
-using Miki.Net.Http;
-using Miki.Utils.Imaging.Headers;
-using Miki.Utils.Imaging.Headers.Models;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Imghoard.Models;
+using Miki.Net.Http;
+using Miki.Utils.Imaging.Headers;
+using Miki.Utils.Imaging.Headers.Models;
+using Newtonsoft.Json;
 
 namespace Imghoard
 {
     public class ImghoardClient
     {
-        internal HttpClient APIClient;
-        internal Uri API_Base;
+        private HttpClient apiClient;
+        private Config config;
 
-        public ImghoardClient() : this(new Uri("https://imgh.miki.ai")) { }
-
-        public ImghoardClient(string Endpoint) : this(new Uri(Endpoint)) { }
+        public ImghoardClient(ImghoardClient.Config config) {
+            this.config = config;
+        }
 
         public ImghoardClient(Uri Endpoint)
         {
-            APIClient = new HttpClientFactory()
+            apiClient = new HttpClientFactory()
+                .HasBaseUri(config.Endpoint)
                 .CreateNew();
-#if DEBUG
-            APIClient.AddHeader("x-miki-tenancy", "testing");
-#endif
-            API_Base = Endpoint;
+            apiClient.AddHeader("x-miki-tenancy", config.Tenancy);
         }
 
         public async Task<IReadOnlyList<Image>> GetImagesAsync(params string[] Tags)
@@ -58,34 +55,30 @@ namespace Imghoard
                 }
             }
 
-            Uri url;
 
-            if (query != null)
-                url = new Uri(API_Base, $"/images?tags={query}");
-            else
-                url = new Uri(API_Base, $"/images");
-
-            var response = await APIClient.GetAsync(url.ToString());
+            StringBuilder urlBuilder = new StringBuilder("/images");
+            if(query != null)
+            {
+                urlBuilder.Append($"?tags={query}");
+            }
+            var response = await apiClient.GetAsync(urlBuilder.ToString());
 
             if (response.Success)
             {
                 return JsonConvert.DeserializeObject<IReadOnlyList<Image>>(response.Body);
             }
 
+            // TODO(velddev): Add better error handling.
             throw new Exception(response.HttpResponseMessage.ReasonPhrase);
         }
         
         public async Task<Image> GetImageAsync(ulong Id)
         {
-            var url = new Uri(API_Base, $"/images?id={Id}");
-
-            var response = await APIClient.GetAsync(url.ToString());
-
+            var response = await apiClient.GetAsync("/images?id={Id}");
             if (response.Success)
             {
                 return JsonConvert.DeserializeObject<Image>(response.Body);
             }
-
             throw new Exception(response.HttpResponseMessage.ReasonPhrase);
         }
 
@@ -103,13 +96,12 @@ namespace Imghoard
 
             if (!imgd.Item1)
             {
-                throw new NotSupportedException("You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
+                throw new NotSupportedException(
+                    "You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
             }
 
             var b64 = Convert.ToBase64String(bytes);
             image.Position = 0;
-
-            var url = new Uri(API_Base, $"/images");
 
             var body = JsonConvert.SerializeObject(
                 new PostImage
@@ -124,26 +116,42 @@ namespace Imghoard
                 }
             );
 
-            var response = await APIClient.PostAsync(url.ToString(), body);
+            var response = await apiClient.PostAsync("/images", body);
 
             if (response.Success)
             {
                 return JsonConvert.DeserializeObject<Uri>(response.Body);
             }
-
-            return await Task.FromResult<Uri>(null);
+            return null;
         }
 
         (bool, string) IsSupported(byte[] image)
         {
-            if (ImageHeaders.Validate(image, ImageType.Png))
+            if(ImageHeaders.Validate(image, ImageType.Png))
+            {
                 return (true, "png");
-            if (ImageHeaders.Validate(image, ImageType.Jpeg))
+            }
+            if(ImageHeaders.Validate(image, ImageType.Jpeg))
+            {
                 return (true, "jpeg");
-            if (ImageHeaders.Validate(image, ImageType.Gif89a) || ImageHeaders.Validate(image, ImageType.Gif87a))
+            }
+            if(ImageHeaders.Validate(image, ImageType.Gif89a) 
+                || ImageHeaders.Validate(image, ImageType.Gif87a))
+            {
                 return (true, "gif");
-
+            }
             return (false, null);
+        }
+
+        public class Config
+        {
+            public string Tenancy { get; set; } = "prod";
+            public string Endpoint { get; set; } = "https://imgh.miki.ai/";
+
+            public static Config Default()
+            {
+                return new Config();
+            }
         }
     }
 }
