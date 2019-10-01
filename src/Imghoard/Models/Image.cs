@@ -1,14 +1,16 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 namespace Imghoard.Models
 {
     public class Image
     {
-        [JsonProperty("ID")]
+        [JsonPropertyName("id")]
         public ulong Id { get; internal set; }
-        [JsonProperty("Tags")]
+
+        [JsonPropertyName("tags")]
         public string[] Tags { get; internal set; }
-        [JsonProperty("URL")]
+
+        [JsonPropertyName("url")]
         public string Url { get; internal set; }
     }
 }

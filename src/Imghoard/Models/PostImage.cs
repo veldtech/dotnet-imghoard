@@ -1,12 +1,16 @@
-﻿using Newtonsoft.Json;
+﻿using System.IO;
+using System.Text.Json.Serialization;
+using Imghoard.Formatters;
 
 namespace Imghoard.Models
 {
-    internal class PostImage
+    internal struct PostImage
     {
-        [JsonProperty("Tags")]
+        [JsonPropertyName("Tags")]
         public string[] Tags { get; internal set; }
-        [JsonProperty("Data")]
-        public string Data { get; internal set; }
+
+        [JsonPropertyName("Data")]
+        [JsonConverter(typeof(Base64FileFormatter))]
+        public Stream Stream { get; internal set; }
     }
 }
