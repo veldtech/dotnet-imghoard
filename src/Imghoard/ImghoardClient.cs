@@ -1,157 +1,153 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Imghoard.Models;
-using Miki.Net.Http;
-using Miki.Utils.Imaging.Headers;
-using Miki.Utils.Imaging.Headers.Models;
-using Newtonsoft.Json;
 
 namespace Imghoard
 {
-    public class ImghoardClient
+    public class ImghoardClient : IDisposable
     {
-        private HttpClient apiClient;
-        private Config config;
-
-        public ImghoardClient(ImghoardClient.Config config) {
-            this.config = config;
-        }
-
-        public ImghoardClient(Uri Endpoint)
+        internal static readonly MediaTypeHeaderValue JsonHeaderValue = new MediaTypeHeaderValue("application/json");
+        internal static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions
         {
-            apiClient = new HttpClientFactory()
-                .HasBaseUri(config.Endpoint)
-                .CreateNew();
-            apiClient.AddHeader("x-miki-tenancy", config.Tenancy);
-        }
+            IgnoreNullValues = true
+        };
 
-        public async Task<IReadOnlyList<Image>> GetImagesAsync(params string[] Tags)
+        private readonly HttpClient apiClient;
+
+        public ImghoardClient(Config config)
         {
-            StringBuilder query = null;
-            if (Tags.Any())
+            apiClient = new HttpClient
             {
-                query = new StringBuilder();
-                foreach (string tag in Tags)
+                BaseAddress = config.Endpoint,
+                DefaultRequestHeaders =
                 {
-                    if (tag.StartsWith("-"))
+                    {"x-miki-tenancy", config.Tenancy}
+                }
+            };
+        }
+
+        public ImghoardClient(Uri endpoint)
+            : this (new Config { Endpoint = endpoint })
+        {
+        }
+
+        public ImghoardClient()
+            : this(Config.Default())
+        {
+        }
+
+        private static void ValidateResponse(HttpResponseMessage response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(response.ReasonPhrase);
+            }
+        }
+
+        public async Task<IReadOnlyList<Image>> GetImagesAsync(params string[] tags)
+        {
+            string url;
+
+            if (tags.Length == 0)
+            {
+                url = "/images";
+            }
+            else
+            {
+                var query = new StringBuilder();
+
+                for (var i = 0; i < tags.Length; i++)
+                {
+                    var tag = tags[i];
+
+                    if (string.IsNullOrEmpty(tag))
+                    {
+                        throw new ArgumentException("Cannot provide an empty tag name.", nameof(tags));
+                    }
+
+                    if (tag[0] == '-')
                     {
                         query.Append(tag);
-                        continue;
+                    }
+                    else if (i > 0)
+                    {
+                        query.Append($"+{tag}");
                     }
                     else
                     {
-                        if (tag != Tags.FirstOrDefault())
-                        {
-                            query.Append($"+{tag}");
-                            continue;
-                        }
-
                         query.Append(tag);
                     }
                 }
+
+                url = $"/images?tags={query}";
             }
 
+            var response = await apiClient.GetAsync(url);
+            ValidateResponse(response);
 
-            StringBuilder urlBuilder = new StringBuilder("/images");
-            if(query != null)
-            {
-                urlBuilder.Append($"?tags={query}");
-            }
-            var response = await apiClient.GetAsync(urlBuilder.ToString());
+            var stream = await response.Content.ReadAsStreamAsync();
 
-            if (response.Success)
-            {
-                return JsonConvert.DeserializeObject<IReadOnlyList<Image>>(response.Body);
-            }
-
-            // TODO(velddev): Add better error handling.
-            throw new Exception(response.HttpResponseMessage.ReasonPhrase);
-        }
-        
-        public async Task<Image> GetImageAsync(ulong Id)
-        {
-            var response = await apiClient.GetAsync("/images?id={Id}");
-            if (response.Success)
-            {
-                return JsonConvert.DeserializeObject<Image>(response.Body);
-            }
-            throw new Exception(response.HttpResponseMessage.ReasonPhrase);
+            return await JsonSerializer.DeserializeAsync<Image[]>(stream);
         }
 
-        public async Task<Uri> PostImageAsync(Stream image, params string[] Tags)
+        public async Task<Image> GetImageAsync(ulong id)
         {
-            byte[] bytes;
+            var response = await apiClient.GetAsync($"/images/{id}");
+            ValidateResponse(response);
 
-            using (var mStream = new MemoryStream())
-            {
-                await image.CopyToAsync(mStream);
-                bytes = mStream.ToArray();
-            }
+            var stream = await response.Content.ReadAsStreamAsync();
 
-            var imgd = IsSupported(bytes);
+            return await JsonSerializer.DeserializeAsync<Image>(stream);
+        }
 
-            if (!imgd.Item1)
-            {
-                throw new NotSupportedException(
-                    "You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
-            }
+        public async Task<Uri> PostImageAsync(Stream image, params string[] tags)
+        {
+            if (image == null) throw new ArgumentNullException(nameof(image));
 
-            var b64 = Convert.ToBase64String(bytes);
-            image.Position = 0;
+            // TODO: Check if we can stream this.
 
-            var body = JsonConvert.SerializeObject(
+            var body = JsonSerializer.SerializeToUtf8Bytes(
                 new PostImage
                 {
-                    Data = $"data:image/{imgd.Item2};base64,{b64}",
-                    Tags = Tags
+                    Stream = image,
+                    Tags = tags
                 },
-                new JsonSerializerSettings
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore,
-                    NullValueHandling = NullValueHandling.Ignore
-                }
+                JsonSerializerOptions
             );
 
-            var response = await apiClient.PostAsync("/images", body);
+            var content = new ByteArrayContent(body);
+            content.Headers.ContentType = JsonHeaderValue;
 
-            if (response.Success)
-            {
-                return JsonConvert.DeserializeObject<Uri>(response.Body);
-            }
-            return null;
-        }
+            var response = await apiClient.PostAsync("/images", content);
+            ValidateResponse(response);
 
-        (bool, string) IsSupported(byte[] image)
-        {
-            if(ImageHeaders.Validate(image, ImageType.Png))
-            {
-                return (true, "png");
-            }
-            if(ImageHeaders.Validate(image, ImageType.Jpeg))
-            {
-                return (true, "jpeg");
-            }
-            if(ImageHeaders.Validate(image, ImageType.Gif89a) 
-                || ImageHeaders.Validate(image, ImageType.Gif87a))
-            {
-                return (true, "gif");
-            }
-            return (false, null);
+            var stream = await response.Content.ReadAsStreamAsync();
+            var result = await JsonSerializer.DeserializeAsync<ImagePostResult>(stream);
+
+            return new Uri(result.File);
         }
 
         public class Config
         {
             public string Tenancy { get; set; } = "prod";
-            public string Endpoint { get; set; } = "https://imgh.miki.ai/";
+
+            public Uri Endpoint { get; set; } = new Uri("https://imgh.miki.ai/");
 
             public static Config Default()
             {
                 return new Config();
             }
+        }
+
+        public void Dispose()
+        {
+            apiClient.Dispose();
         }
     }
 }
