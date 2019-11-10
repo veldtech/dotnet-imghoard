@@ -146,7 +146,7 @@ namespace Imghoard
         public class Config
         {
             public string Tenancy { get; set; } = "prod";
-            public string Endpoint { get; set; } = "https://imgh.miki.ai/";
+            public string Endpoint { get; set; } = "https://api.miki.ai/";
 
             public static Config Default()
             {
