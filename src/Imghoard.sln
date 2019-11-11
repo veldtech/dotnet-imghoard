@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imghoard", "Imghoard\Imghoard.csproj", "{82A74870-887B-458C-B5D8-03D77315EB49}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imghoard.Tests", "Imghoard.Tests\Imghoard.Tests.csproj", "{46707EDE-6E06-45C8-8187-FC6435367D6E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imghoard.Tests", "Imghoard.Tests\Imghoard.Tests.csproj", "{46707EDE-6E06-45C8-8187-FC6435367D6E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imghoard Uploader", "C:\Users\exsersewo\source\repos\Imghoard Uploader\Imghoard Uploader\Imghoard Uploader.csproj", "{6E7941F5-11FC-4839-9744-67204311F57B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{46707EDE-6E06-45C8-8187-FC6435367D6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46707EDE-6E06-45C8-8187-FC6435367D6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46707EDE-6E06-45C8-8187-FC6435367D6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E7941F5-11FC-4839-9744-67204311F57B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E7941F5-11FC-4839-9744-67204311F57B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E7941F5-11FC-4839-9744-67204311F57B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E7941F5-11FC-4839-9744-67204311F57B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

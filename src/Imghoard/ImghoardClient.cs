@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Imghoard.Exceptions;
 using Imghoard.Models;
-using Miki.Net.Http;
 using Miki.Utils.Imaging.Headers;
 using Miki.Utils.Imaging.Headers.Models;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Imghoard
 {
@@ -22,12 +23,10 @@ namespace Imghoard
         public ImghoardClient(Config config)
         {
             this.config = config;
-            
-            apiClient = new HttpClientFactory()
-                .HasBaseUri(config.Endpoint)
-                .CreateNew();
 
-            apiClient.AddHeader("x-miki-tenancy", config.Tenancy);
+            apiClient = new HttpClient();
+            apiClient.DefaultRequestHeaders.Add("x-miki-tenancy", config.Tenancy);
+            apiClient.DefaultRequestHeaders.Add("User-Agent", config.UserAgent);
         }
 
         /// <summary>
@@ -86,18 +85,18 @@ namespace Imghoard
             StringBuilder url = new StringBuilder(config.Endpoint);
 
             if (query.Length > 0)
-                url.Append($"/images?{query}");
+                url.Append($"images?{query}");
             else
-                url.Append("/images");
+                url.Append("images");
 
             var response = await apiClient.GetAsync(url.ToString());
 
-            if (response.Success)
+            if (response.IsSuccessStatusCode)
             {
-                return new ImagesResponse(this, JsonConvert.DeserializeObject<IReadOnlyList<Image>>(response.Body), Tags, page);
+                return new ImagesResponse(this, JsonConvert.DeserializeObject<IReadOnlyList<Image>>(await response.Content.ReadAsStringAsync()), Tags, page);
             }
 
-            throw new Exception(response.HttpResponseMessage.ReasonPhrase);
+            throw new ResponseException(response.ReasonPhrase);
         }
 
         /// <summary>
@@ -109,16 +108,16 @@ namespace Imghoard
         {
             var url = new StringBuilder(config.Endpoint);
                 
-            url.Append($"/images/{Id}");
+            url.Append($"images/{Id}");
 
             var response = await apiClient.GetAsync(url.ToString());
 
-            if (response.Success)
+            if (response.IsSuccessStatusCode)
             {
-                return JsonConvert.DeserializeObject<Image>(response.Body);
+                return JsonConvert.DeserializeObject<Image>(await response.Content.ReadAsStringAsync());
             }
 
-            throw new Exception(response.HttpResponseMessage.ReasonPhrase);
+            throw new ResponseException(response.ReasonPhrase);
         }
 
         /// <summary>
@@ -149,6 +148,11 @@ namespace Imghoard
         /// <returns>The url of the uploaded image or null on failure</returns>
         public async Task<string> PostImageAsync(Memory<byte> bytes, params string[] Tags)
         {
+            if(bytes.Length >= 1000000 && !config.Experimental)
+            {
+                throw new NotSupportedException("In order to upload images larger than 1MB you need to enable experimental features in the config");
+            }
+
             (bool supported, string prefix) = IsSupported(bytes.Span.ToArray());
 
             if (!supported)
@@ -156,29 +160,50 @@ namespace Imghoard
                 throw new NotSupportedException("You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
             }
 
-            var url = config.Endpoint + "/images";
+            var url = config.Endpoint + "images";
 
-            var body = JsonConvert.SerializeObject(
-                new PostImage
-                {
-                    Data = $"data:image/{prefix};base64,{Convert.ToBase64String(bytes.Span)}",
-                    Tags = Tags
-                },
-                new JsonSerializerSettings
-                {
-                    DefaultValueHandling = DefaultValueHandling.Ignore,
-                    NullValueHandling = NullValueHandling.Ignore
-                }
-            );
-
-            var response = await apiClient.PostAsync(url, body);
-
-            if (response.Success)
+            if(bytes.Length < 1000000)
             {
-                return JsonConvert.DeserializeObject<UploadResponse>(response.Body).File;
-            }
+                var body = JsonConvert.SerializeObject(
+                        new PostImage
+                        {
+                            Data = $"data:image/{prefix};base64,{Convert.ToBase64String(bytes.Span)}",
+                            Tags = Tags
+                        },
+                        new JsonSerializerSettings
+                        {
+                            DefaultValueHandling = DefaultValueHandling.Ignore,
+                            NullValueHandling = NullValueHandling.Ignore
+                        }
+                );
 
-            return null;
+                var response = await apiClient.PostAsync(url, new StringContent(body));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return JsonConvert.DeserializeObject<UploadResponse>(await response.Content.ReadAsStringAsync()).File;
+                }
+
+                return null;
+            }
+            else
+            {
+                var body = new MultipartFormDataContent
+                {
+                    { new StringContent($"image/{prefix}"), "data-type" },
+                    { new ByteArrayContent(bytes.Span.ToArray()), "data" },
+                    { new StringContent(string.Join(",", Tags)), "tags" }
+                };
+
+                var response = await apiClient.PostAsync(url, body);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return JsonConvert.DeserializeObject<UploadResponse>(await response.Content.ReadAsStringAsync()).File;
+                }
+
+                return null;
+            }
         }
 
         (bool, string) IsSupported(byte[] image)
