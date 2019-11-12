@@ -6,7 +6,7 @@ namespace Imghoard.Models
 {
     public class ImagesResponse
     {
-        private readonly ImghoardClient ClientInstance;
+        private readonly ImghoardClient clientInstance;
 
         public IReadOnlyList<Image> Images { get; private set; }
         public string[] QueryTags { get; private set; }
@@ -21,7 +21,7 @@ namespace Imghoard.Models
         /// <param name="page">Current page the response is on</param>
         public ImagesResponse(ImghoardClient client, IEnumerable<Image> images, string[] qt, int page)
         {
-            ClientInstance = client;
+            clientInstance = client;
             Images = images.ToList();
             QueryTags = qt;
             Page = page;
@@ -32,6 +32,6 @@ namespace Imghoard.Models
         /// </summary>
         /// <returns>The next page of images</returns>
         public async Task<ImagesResponse> GetNextPageAsync() =>
-            await ClientInstance.GetImagesAsync(Page + 1, QueryTags);
+            await clientInstance.GetImagesAsync(Page + 1, QueryTags);
     }
 }

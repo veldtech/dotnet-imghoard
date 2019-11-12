@@ -17,6 +17,12 @@ namespace Imghoard
     {
         private HttpClient apiClient;
         private readonly Config config;
+        private const int Mb = 1000000;
+        private readonly JsonSerializerSettings serializerSettings = new JsonSerializerSettings
+        {
+            DefaultValueHandling = DefaultValueHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         public ImghoardClient() : this(Config.Default()) { }
 
@@ -96,7 +102,7 @@ namespace Imghoard
                 return new ImagesResponse(this, JsonConvert.DeserializeObject<IReadOnlyList<Image>>(await response.Content.ReadAsStringAsync()), Tags, page);
             }
 
-            throw new ResponseException(response.ReasonPhrase);
+            throw new ResponseException("Response was not successfull; Reason: \"" + response.ReasonPhrase + "\"");
         }
 
         /// <summary>
@@ -148,12 +154,12 @@ namespace Imghoard
         /// <returns>The url of the uploaded image or null on failure</returns>
         public async Task<string> PostImageAsync(Memory<byte> bytes, params string[] Tags)
         {
-            if(bytes.Length >= 1000000 && !config.Experimental)
+            if(bytes.Length >= Mb && !config.Experimental)
             {
                 throw new NotSupportedException("In order to upload images larger than 1MB you need to enable experimental features in the config");
             }
 
-            (bool supported, string prefix) = IsSupported(bytes.Span.ToArray());
+            (bool supported, string prefix) = IsSupported(bytes.Span);
 
             if (!supported)
             {
@@ -162,7 +168,7 @@ namespace Imghoard
 
             var url = config.Endpoint + "images";
 
-            if(bytes.Length < 1000000)
+            if(bytes.Length < Mb)
             {
                 var body = JsonConvert.SerializeObject(
                         new PostImage
@@ -170,11 +176,7 @@ namespace Imghoard
                             Data = $"data:image/{prefix};base64,{Convert.ToBase64String(bytes.Span)}",
                             Tags = Tags
                         },
-                        new JsonSerializerSettings
-                        {
-                            DefaultValueHandling = DefaultValueHandling.Ignore,
-                            NullValueHandling = NullValueHandling.Ignore
-                        }
+                        serializerSettings
                 );
 
                 var response = await apiClient.PostAsync(url, new StringContent(body));
@@ -184,7 +186,7 @@ namespace Imghoard
                     return JsonConvert.DeserializeObject<UploadResponse>(await response.Content.ReadAsStringAsync()).File;
                 }
 
-                return null;
+                throw new ResponseException("Response was not successfull; Reason: \"" + response.ReasonPhrase + "\"");
             }
             else
             {
@@ -202,11 +204,11 @@ namespace Imghoard
                     return JsonConvert.DeserializeObject<UploadResponse>(await response.Content.ReadAsStringAsync()).File;
                 }
 
-                return null;
+                throw new ResponseException("Response was not successfull; Reason: \"" + response.ReasonPhrase + "\"");
             }
         }
 
-        (bool, string) IsSupported(byte[] image)
+        (bool, string) IsSupported(Span<byte> image)
         {
             if(ImageHeaders.Validate(image, ImageType.Png))
             {

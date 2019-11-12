@@ -6,7 +6,7 @@ namespace Imghoard
     {
         public string Tenancy { get; set; } = "production";
         public string Endpoint { get; set; } = "https://api.miki.ai/";
-        public string UserAgent { get; set; } = $"Mozilla/5.0 (Imghoard.Net/{Assembly.GetExecutingAssembly().GetName().Version.ToString().Substring(0, 3)}; +https://github.com/Mikibot/dotnet-imghoard)";
+        public string UserAgent { get; set; } = $"Imghoard.Net/{Assembly.GetExecutingAssembly().GetName().Version.ToString().Substring(0, 3)} https://github.com/Mikibot/dotnet-imghoard";
 
         /// <summary>
         /// Allows the client to use unstable, experimental features

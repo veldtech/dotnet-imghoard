@@ -10,7 +10,7 @@ namespace Imghoard.Tests
         [Fact]
         public void ConstructClientTest()
         {
-            var i = new ImghoardClient(Config.Default());
+            var i = new ImghoardClient();
 
             Assert.NotNull(i);
         }
