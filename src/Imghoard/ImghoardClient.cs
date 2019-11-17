@@ -30,76 +30,51 @@ namespace Imghoard
         {
             this.config = config;
 
-            apiClient = new HttpClient();
-            apiClient.DefaultRequestHeaders.Add("x-miki-tenancy", config.Tenancy);
-            apiClient.DefaultRequestHeaders.Add("User-Agent", config.UserAgent);
+            this.apiClient = new HttpClient();
+            this.apiClient.DefaultRequestHeaders.Add("x-miki-tenancy", config.Tenancy);
+            this.apiClient.DefaultRequestHeaders.Add("User-Agent", config.UserAgent);
         }
+
+        public string GetEndpoint()
+            => config.Endpoint;
 
         /// <summary>
         /// Gets the first page of results given an array of Tags to find
         /// </summary>
-        /// <param name="Tags">Tags to search for</param>
+        /// <param name="tags">Tags to search for</param>
         /// <returns>A readonly list of images found with the Tags entered</returns>
-        public async Task<ImagesResponse> GetImagesAsync(params string[] Tags)
-            => await GetImagesAsync(0, Tags);
+        public async Task<ImagesResponse> GetImagesAsync(params string[] tags)
+            => await GetImagesAsync(0, tags);
 
         /// <summary>
         /// Gets the given page of results given an array of Tags to find
         /// </summary>
-        /// <param name="Tags">Tags to search for</param>
+        /// <param name="tags">Tags to search for</param>
         /// <returns>A readonly list of images found with the Tags entered</returns>
-        public async Task<ImagesResponse> GetImagesAsync(int page = 0, params string[] Tags)
+        public async Task<ImagesResponse> GetImagesAsync(int page = 0, params string[] tags)
         {
-            StringBuilder query = new StringBuilder();
+            List<string> args = new List<string>();
 
             if (page > 0)
             {
-                query.Append($"page={page}");
+                args.Add($"page{page}");
             }
 
-            if (Tags.Any())
+            if(tags.Any())
             {
-                if (page > 0)
-                {
-                    query.Append("&tags=");
-                }
-                else
-                {
-                    query.Append("tags=");
-                }
-
-                foreach (string tag in Tags)
-                {
-                    if (tag.StartsWith("-"))
-                    {
-                        query.Append(tag);
-                        continue;
-                    }
-                    else
-                    {
-                        if (tag != Tags.FirstOrDefault())
-                        {
-                            query.Append($"+{tag}");
-                            continue;
-                        }
-
-                        query.Append(tag);
-                    }
-                }
+                args.Add(string.Join("+", tags));
             }
 
             StringBuilder url = new StringBuilder(config.Endpoint);
 
-            if (query.Length > 0)
-                url.Append($"images?{query}");
-            else
-                url.Append("images");
+            if (args.Any())
+                url.Append($"?{string.Join("&", args)}");
 
             var response = await apiClient.GetAsync(url.ToString());
 
             if (response.IsSuccessStatusCode)
             {
-                return new ImagesResponse(this, JsonConvert.DeserializeObject<IReadOnlyList<Image>>(await response.Content.ReadAsStringAsync()), Tags, page);
+                return new ImagesResponse(this, JsonConvert.DeserializeObject<IReadOnlyList<Image>>(await response.Content.ReadAsStringAsync()), tags, page);
             }
 
             throw new ResponseException("Response was not successfull; Reason: \"" + response.ReasonPhrase + "\"");
@@ -108,15 +83,11 @@ namespace Imghoard
         /// <summary>
         /// Get an image with a given Id
         /// </summary>
-        /// <param name="Id">The snowflake Id of the Image to get</param>
+        /// <param name="id">The snowflake Id of the Image to get</param>
         /// <returns>The image with the given snowflake</returns>
-        public async Task<Image> GetImageAsync(ulong Id)
+        public async Task<Image> GetImageAsync(ulong id)
         {
-            var url = new StringBuilder(config.Endpoint);
-                
-            url.Append($"images/{Id}");
-
-            var response = await apiClient.GetAsync(url.ToString());
+            var response = await apiClient.GetAsync(config.Endpoint+ $"/{id}");
 
             if (response.IsSuccessStatusCode)
             {
@@ -130,9 +101,9 @@ namespace Imghoard
         /// Posts a new image to the Imghoard instance
         /// </summary>
         /// <param name="image">The image stream to upload</param>
-        /// <param name="Tags">The tags of the image being uploaded</param>
+        /// <param name="tags">The tags of the image being uploaded</param>
         /// <returns>The url of the uploaded image or null on failure</returns>
-        public async Task<string> PostImageAsync(Stream image, params string[] Tags)
+        public async Task<string> PostImageAsync(Stream image, params string[] tags)
         {
             byte[] bytes;
 
@@ -143,16 +114,16 @@ namespace Imghoard
             }
             image.Position = 0;
 
-            return await PostImageAsync(bytes, Tags);
+            return await PostImageAsync(bytes, tags);
         }
 
         /// <summary>
         /// Posts a new image to the Imghoard instance
         /// </summary>
         /// <param name="bytes">The raw bytes of the image to upload</param>
-        /// <param name="Tags">The tags of the image being uploaded</param>
+        /// <param name="tags">The tags of the image being uploaded</param>
         /// <returns>The url of the uploaded image or null on failure</returns>
-        public async Task<string> PostImageAsync(Memory<byte> bytes, params string[] Tags)
+        public async Task<string> PostImageAsync(Memory<byte> bytes, params string[] tags)
         {
             if(bytes.Length >= Mb && !config.Experimental)
             {
@@ -166,20 +137,18 @@ namespace Imghoard
                 throw new NotSupportedException("You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
             }
 
-            var url = config.Endpoint + "images";
-
             if(bytes.Length < Mb)
             {
                 var body = JsonConvert.SerializeObject(
                         new PostImage
                         {
                             Data = $"data:image/{prefix};base64,{Convert.ToBase64String(bytes.Span)}",
-                            Tags = Tags
+                            Tags = tags
                         },
                         serializerSettings
                 );
 
-                var response = await apiClient.PostAsync(url, new StringContent(body));
+                var response = await apiClient.PostAsync(config.Endpoint, new StringContent(body));
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -194,10 +163,10 @@ namespace Imghoard
                 {
                     { new StringContent($"image/{prefix}"), "data-type" },
                     { new ByteArrayContent(bytes.Span.ToArray()), "data" },
-                    { new StringContent(string.Join(",", Tags)), "tags" }
+                    { new StringContent(string.Join(",", tags)), "tags" }
                 };
 
-                var response = await apiClient.PostAsync(url, body);
+                var response = await apiClient.PostAsync(config.Endpoint, body);
 
                 if (response.IsSuccessStatusCode)
                 {

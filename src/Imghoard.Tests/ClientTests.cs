@@ -13,6 +13,7 @@ namespace Imghoard.Tests
             var i = new ImghoardClient();
 
             Assert.NotNull(i);
+            Assert.Equal(Config.Default().Endpoint, i.GetEndpoint());
         }
 
         [Fact]
@@ -20,7 +21,7 @@ namespace Imghoard.Tests
         {
             var mock = new Mock<IImghoardClient>();
 
-            mock.Setup(x => x.GetImageAsync(1171190856858734592))
+            mock.Setup(x => x.GetImageAsync(It.IsAny<ulong>()))
                 .Returns(Task.FromResult(new Image
                 {
                     Id = 1171190856858734592,
