@@ -17,14 +17,14 @@ namespace Imghoard.Models
         /// </summary>
         /// <param name="client">An instance of the Imghoard Client</param>
         /// <param name="images">The list of images currently gotten</param>
-        /// <param name="qt">Query tags used to get the images</param>
+        /// <param name="queryTags">Query tags used to get the images</param>
         /// <param name="page">Current page the response is on</param>
-        public ImagesResponse(ImghoardClient client, IEnumerable<Image> images, string[] qt, int page)
+        public ImagesResponse(ImghoardClient client, IEnumerable<Image> images, string[] queryTags, int page)
         {
-            clientInstance = client;
-            Images = images.ToList();
-            QueryTags = qt;
-            Page = page;
+            this.clientInstance = client;
+            this.Images = images.ToList();
+            this.QueryTags = queryTags;
+            this.Page = page;
         }
 
         /// <summary>

@@ -130,9 +130,9 @@ namespace Imghoard
                 throw new NotSupportedException("In order to upload images larger than 1MB you need to enable experimental features in the config");
             }
 
-            (bool supported, string prefix) = IsSupported(bytes.Span);
+            var check = IsSupported(bytes.Span);
 
-            if (!supported)
+            if (!check.Supported)
             {
                 throw new NotSupportedException("You have given an incorrect image format, currently supported formats are: png, jpeg, gif");
             }
@@ -142,7 +142,7 @@ namespace Imghoard
                 var body = JsonConvert.SerializeObject(
                         new PostImage
                         {
-                            Data = $"data:image/{prefix};base64,{Convert.ToBase64String(bytes.Span)}",
+                            Data = $"data:image/{check.Prefix};base64,{Convert.ToBase64String(bytes.Span)}",
                             Tags = tags
                         },
                         serializerSettings
@@ -161,7 +161,7 @@ namespace Imghoard
             {
                 var body = new MultipartFormDataContent
                 {
-                    { new StringContent($"image/{prefix}"), "data-type" },
+                    { new StringContent($"image/{check.Prefix}"), "data-type" },
                     { new ByteArrayContent(bytes.Span.ToArray()), "data" },
                     { new StringContent(string.Join(",", tags)), "tags" }
                 };
@@ -177,22 +177,22 @@ namespace Imghoard
             }
         }
 
-        (bool, string) IsSupported(Span<byte> image)
+        private SupportedImage IsSupported(Span<byte> image)
         {
             if(ImageHeaders.Validate(image, ImageType.Png))
             {
-                return (true, "png");
+                return new SupportedImage(true, "png");
             }
             if(ImageHeaders.Validate(image, ImageType.Jpeg))
             {
-                return (true, "jpeg");
+                return new SupportedImage(true, "jpeg");
             }
             if(ImageHeaders.Validate(image, ImageType.Gif89a) 
                 || ImageHeaders.Validate(image, ImageType.Gif87a))
             {
-                return (true, "gif");
+                return new SupportedImage(true, "gif");
             }
-            return (false, null);
+            return new SupportedImage(false, null);
         }
     }
 }
