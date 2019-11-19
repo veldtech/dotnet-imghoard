@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imghoard", "Imghoard\Imghoard.csproj", "{82A74870-887B-458C-B5D8-03D77315EB49}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imghoard.Tests", "Imghoard.Tests\Imghoard.Tests.csproj", "{46707EDE-6E06-45C8-8187-FC6435367D6E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imghoard.Tests", "Imghoard.Tests\Imghoard.Tests.csproj", "{46707EDE-6E06-45C8-8187-FC6435367D6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

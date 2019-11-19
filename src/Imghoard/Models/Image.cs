@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Imghoard.Tests")]
 namespace Imghoard.Models
 {
     public class Image
